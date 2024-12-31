@@ -17,6 +17,7 @@ Chạy container có tên là kafka-local.
 Bước 3: Mở terminal trong container kafka-local, image docker.io/bitnami/kafka:3.4 , chạy lệnh sau:
 
 bash
+
 kafka-topics.sh --create \
   --bootstrap-server localhost:9092 \
   --replication-factor 1 \
@@ -28,10 +29,12 @@ Lệnh này sẽ tạo ra 1 topic mới tên là ecommerce.
 Bước 4: Mở thêm 2 cửa sổ terminal khác nhau, chạy song song 2 lệnh:
 
 bash
+
 kafka-console-producer.sh --broker-list localhost:9092 --topic ecommerce
 <!-- first terminal -->
 
 bash
+
 kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic ecommerce --from-beginning
 <!-- second terminal -->
 
