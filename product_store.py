@@ -44,6 +44,6 @@ class ProductStore:
         return len(self.products)
 
 if __name__ == "__main__":
-    store = ProductStore("./output.csv")
+    store = ProductStore("2019-Nov")
     store.load_products()
     print(f"Total products: {store.get_product_count()}")
