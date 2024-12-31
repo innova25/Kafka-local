@@ -101,7 +101,7 @@ class DataGenerator:
         self.producer.close()  # Close the producer after all threads finish
 
 def main():
-    store = ProductStore("./output.csv")
+    store = ProductStore("2019-Nov")    
     products = store.get_products()
 
     generator = DataGenerator(
