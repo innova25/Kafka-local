@@ -26,7 +26,7 @@ class ProductStore:
         products_df = products_df[
             ["product_id", "category_id", "category_code", "brand", "price"]
         ]
-        products_df[['product_id', 'category_id', 'category_code','brand']] = products_df[['product_id', 'category_id', 'category_code', 'brand']].astype(str)
+        products_df[['product_id', 'category_id', 'category_code']] = products_df[['product_id', 'category_id', 'category_code']].astype(str)
         self.products = products_df.to_dict('records')
         
         # Save to cache
