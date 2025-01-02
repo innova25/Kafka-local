@@ -106,7 +106,7 @@ def main():
     products = store.get_products()
 
     generator = DataGenerator(
-        kafka_topic="test",
+        kafka_topic="ecommerce",
         bootstrap_servers="localhost:8097,localhost:8098,localhost:8099",
         rate=0.2,
         num_generators=30
