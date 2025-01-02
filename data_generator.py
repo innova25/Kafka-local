@@ -6,6 +6,7 @@ from datetime import datetime
 from product_store import ProductStore
 from kafka import KafkaProducer
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 class DataGenerator:
     def __init__(
@@ -15,7 +16,8 @@ class DataGenerator:
         rate: float = 0.2,
         num_generators: int = 30,
         min_events: int = 2,
-        max_events: int = 20
+        max_events: int = 20,
+        max_threads: int = 4
     ):
         self.current_time = datetime(2020, 5, 1)
         self.kafka_topic = kafka_topic
@@ -24,6 +26,7 @@ class DataGenerator:
         self.num_generators = num_generators
         self.min_events = min_events
         self.max_events = max_events
+        self.max_threads = max_threads
 
         # Initialize KafkaProducer
         self.producer = KafkaProducer(
@@ -69,7 +72,6 @@ class DataGenerator:
         events_generated = 0
 
         while events_generated < total_events:
-            
             event = self.generate_events(user_id, user_session, products)
             # Send event to Kafka topic
             self.producer.send(self.kafka_topic, value=event)
@@ -78,27 +80,29 @@ class DataGenerator:
             time.sleep(1.0 / self.rate)
 
     def run(self, products: list):
-        """Run the data generation process"""
-        threads = []
-
+        """Run the data generation process using a thread pool"""
+        # Prepare the work items
+        work_items = []
         for i in range(self.num_generators):
-            user_id =str(uuid.uuid4().int % 1_000_000_000)
+            user_id = uuid.uuid4().int % 1_000_000_000
             user_session = str(uuid.uuid4())
             total_events = random.randint(self.min_events, self.max_events)
-            print(f"Generator {i + 1} will generate {total_events} events")
+            print(f"Generator {i + 1} will generate {total_events} events for user {user_id}")
+            work_items.append((user_id, user_session, products, total_events))
 
-            thread = threading.Thread(
-                target=self.data_generator_worker,
-                args=(user_id, user_session, products, total_events)
-            )
+        # Use ThreadPoolExecutor to manage the thread pool
+        with ThreadPoolExecutor(max_workers=self.max_threads) as executor:
+            # Submit all work items to the thread pool
+            futures = [
+                executor.submit(self.data_generator_worker, *work_item)
+                for work_item in work_items
+            ]
 
-            threads.append(thread)
-            thread.start()
+            # Wait for all tasks to complete and get their results
+            for future in futures:
+                print(future.result())
 
-        for thread in threads:
-            thread.join()
-
-        self.producer.close()  # Close the producer after all threads finish
+        self.producer.close()
 
 def main():
 
