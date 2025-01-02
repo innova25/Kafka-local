@@ -14,11 +14,7 @@ Bước 3: Mở terminal trong container kafka1, chạy lệnh sau:
 
 bash
 
-kafka-topics.sh --create \
-  --bootstrap-server kafka1:9092,kafka2:9092,kafka3:9092 \
-  --replication-factor 3 \
-  --partitions 3 \
-  --topic ecommerce
+kafka-topics --create --bootstrap-server kafka1:9092,kafka2:9092,kafka3:9092 --replication-factor 3 --partitions 3 --topic ecommerce
 
 Lệnh này sẽ tạo ra 1 topic mới tên là ecommerce.
 
