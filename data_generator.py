@@ -4,15 +4,13 @@ import threading
 import random
 from datetime import datetime
 from kafka import KafkaProducer
-import pandas as pd
-from product_store import ProductStore
 import json
 
 class DataGenerator:
     def __init__(
         self,
         kafka_topic: str,
-        bootstrap_servers: str = "localhost:9092",
+        bootstrap_servers: str = "localhost:8097,localhost:8098,localhost:8099",
         rate: float = 0.2,
         num_generators: int = 30,
         min_events: int = 2,
@@ -29,7 +27,7 @@ class DataGenerator:
         # Initialize KafkaProducer
         self.producer = KafkaProducer(
             bootstrap_servers=self.bootstrap_servers,
-            value_serializer=lambda v: json.dumps(v).encode('utf-8')  # Serialize to JSON
+            value_serializer=lambda v: v.encode('utf-8')  # Raw JSON as UTF-8
         )
 
     @staticmethod
@@ -46,18 +44,19 @@ class DataGenerator:
         user_id: int,
         user_session: str,
         products: list
-    ) -> dict:
-        """Generate a single event"""
-        current_time = datetime.utcnow()
+    ) -> str:
+        """Generate a single event as raw JSON"""
+        # current_time = datetime.utcnow()
+        current_time = self.current_time
         product = random.choice(products)
         event = {
-            "event_time": current_time.strftime('%Y-%m-%d %H:%M:%S.%f UTC')[:-4],
+            "event_time": current_time.strftime('%Y-%m-%d %H:%M:%S UTC'),
             "event_type": self.generate_event_type(),
             **product,
             "user_id": user_id,
             "user_session": user_session,
         }
-        return event
+        return json.dumps(event)  # Convert dictionary to JSON string
 
     def data_generator_worker(
         self,
@@ -101,12 +100,24 @@ class DataGenerator:
         self.producer.close()  # Close the producer after all threads finish
 
 def main():
-    store = ProductStore("./output.csv")
+    # Mock ProductStore with sample data for demonstration
+    class ProductStore:
+        def __init__(self, dataset):
+            self.dataset = dataset
+
+        def get_products(self):
+            return [
+                {"product_id": 1, "product_name": "Widget", "price": 19.99},
+                {"product_id": 2, "product_name": "Gadget", "price": 29.99},
+                {"product_id": 3, "product_name": "Thingamajig", "price": 39.99}
+            ]
+
+    store = ProductStore("./data.csv")    
     products = store.get_products()
 
     generator = DataGenerator(
         kafka_topic="ecommerce",
-        bootstrap_servers="localhost:9092",
+        bootstrap_servers="localhost:8097,localhost:8098,localhost:8099",
         rate=0.2,
         num_generators=30
     )
