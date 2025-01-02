@@ -3,16 +3,15 @@ import time
 import threading
 import random
 from datetime import datetime
-from kafka import KafkaProducer
-import pandas as pd
 from product_store import ProductStore
+from kafka import KafkaProducer
 import json
 
 class DataGenerator:
     def __init__(
         self,
         kafka_topic: str,
-        bootstrap_servers: str = "localhost:9092",
+        bootstrap_servers: str = "localhost:8097,localhost:8098,localhost:8099",
         rate: float = 0.2,
         num_generators: int = 30,
         min_events: int = 2,
@@ -29,7 +28,7 @@ class DataGenerator:
         # Initialize KafkaProducer
         self.producer = KafkaProducer(
             bootstrap_servers=self.bootstrap_servers,
-            value_serializer=lambda v: json.dumps(v).encode('utf-8')  # Serialize to JSON
+            value_serializer=lambda v: v.encode('utf-8')  # Raw JSON as UTF-8
         )
 
     @staticmethod
@@ -43,25 +42,25 @@ class DataGenerator:
 
     def generate_events(
         self,
-        user_id: int,
+        user_id: str,
         user_session: str,
         products: list
-    ) -> dict:
-        """Generate a single event"""
+    ) -> str:
+        """Generate a single event as raw JSON"""
         current_time = datetime.utcnow()
         product = random.choice(products)
         event = {
-            "event_time": current_time.strftime('%Y-%m-%d %H:%M:%S.%f UTC')[:-4],
+            "event_time": current_time.strftime('%Y-%m-%d %H:%M:%S UTC'),
             "event_type": self.generate_event_type(),
             **product,
             "user_id": user_id,
             "user_session": user_session,
         }
-        return event
+        return json.dumps(event)  # Convert dictionary to JSON string
 
     def data_generator_worker(
         self,
-        user_id: int,
+        user_id: str,
         user_session: str,
         products: list,
         total_events: int
@@ -70,6 +69,7 @@ class DataGenerator:
         events_generated = 0
 
         while events_generated < total_events:
+            
             event = self.generate_events(user_id, user_session, products)
             # Send event to Kafka topic
             self.producer.send(self.kafka_topic, value=event)
@@ -82,7 +82,7 @@ class DataGenerator:
         threads = []
 
         for i in range(self.num_generators):
-            user_id = uuid.uuid4().int % 1_000_000_000
+            user_id =str(uuid.uuid4().int % 1_000_000_000)
             user_session = str(uuid.uuid4())
             total_events = random.randint(self.min_events, self.max_events)
             print(f"Generator {i + 1} will generate {total_events} events")
@@ -101,12 +101,13 @@ class DataGenerator:
         self.producer.close()  # Close the producer after all threads finish
 
 def main():
-    store = ProductStore("2019-Nov")    
+
+    store = ProductStore("./new.csv")    
     products = store.get_products()
 
     generator = DataGenerator(
-        kafka_topic="ecommerce",
-        bootstrap_servers="localhost:9092",
+        kafka_topic="test",
+        bootstrap_servers="localhost:8097,localhost:8098,localhost:8099",
         rate=0.2,
         num_generators=30
     )
