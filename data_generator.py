@@ -3,6 +3,7 @@ import time
 import threading
 import random
 from datetime import datetime
+from product_store import ProductStore
 from kafka import KafkaProducer
 import json
 
@@ -41,13 +42,12 @@ class DataGenerator:
 
     def generate_events(
         self,
-        user_id: int,
+        user_id: str,
         user_session: str,
         products: list
     ) -> str:
         """Generate a single event as raw JSON"""
-        # current_time = datetime.utcnow()
-        current_time = self.current_time
+        current_time = datetime.utcnow()
         product = random.choice(products)
         event = {
             "event_time": current_time.strftime('%Y-%m-%d %H:%M:%S UTC'),
@@ -60,7 +60,7 @@ class DataGenerator:
 
     def data_generator_worker(
         self,
-        user_id: int,
+        user_id: str,
         user_session: str,
         products: list,
         total_events: int
@@ -69,6 +69,7 @@ class DataGenerator:
         events_generated = 0
 
         while events_generated < total_events:
+            
             event = self.generate_events(user_id, user_session, products)
             # Send event to Kafka topic
             self.producer.send(self.kafka_topic, value=event)
@@ -81,7 +82,7 @@ class DataGenerator:
         threads = []
 
         for i in range(self.num_generators):
-            user_id = uuid.uuid4().int % 1_000_000_000
+            user_id =str(uuid.uuid4().int % 1_000_000_000)
             user_session = str(uuid.uuid4())
             total_events = random.randint(self.min_events, self.max_events)
             print(f"Generator {i + 1} will generate {total_events} events")
@@ -100,23 +101,12 @@ class DataGenerator:
         self.producer.close()  # Close the producer after all threads finish
 
 def main():
-    # Mock ProductStore with sample data for demonstration
-    class ProductStore:
-        def __init__(self, dataset):
-            self.dataset = dataset
 
-        def get_products(self):
-            return [
-                {"product_id": 1, "product_name": "Widget", "price": 19.99},
-                {"product_id": 2, "product_name": "Gadget", "price": 29.99},
-                {"product_id": 3, "product_name": "Thingamajig", "price": 39.99}
-            ]
-
-    store = ProductStore("./data.csv")    
+    store = ProductStore("./new.csv")    
     products = store.get_products()
 
     generator = DataGenerator(
-        kafka_topic="ecommerce",
+        kafka_topic="test",
         bootstrap_servers="localhost:8097,localhost:8098,localhost:8099",
         rate=0.2,
         num_generators=30
