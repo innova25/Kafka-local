@@ -23,9 +23,11 @@ class ProductStore:
                 print(f"Cache load failed: {e}")
 
         products_df = pd.read_csv(self.input_file)
-        self.products = products_df[
+        products_df = products_df[
             ["product_id", "category_id", "category_code", "brand", "price"]
-        ].to_dict('records')
+        ]
+        products_df[['product_id', 'category_id', 'category_code','brand']] = products_df[['product_id', 'category_id', 'category_code', 'brand']].astype(str)
+        self.products = products_df.to_dict('records')
         
         # Save to cache
         with open(self.cache_file, 'wb') as f:
@@ -44,6 +46,6 @@ class ProductStore:
         return len(self.products)
 
 if __name__ == "__main__":
-    store = ProductStore("./data.csv")
+    store = ProductStore("./new.csv")
     store.load_products()
     print(f"Total products: {store.get_product_count()}")
