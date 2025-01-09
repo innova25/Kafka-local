@@ -1,12 +1,14 @@
-import uuid
-import time
-import threading
-import random
-from datetime import datetime
-from product_store import ProductStore
-from kafka import KafkaProducer
 import json
-from concurrent.futures import ThreadPoolExecutor
+import random
+import time
+import uuid
+import math
+from datetime import datetime
+
+from kafka import KafkaProducer
+
+from product_store import ProductStore
+
 
 class DataGenerator:
     def __init__(
@@ -16,7 +18,7 @@ class DataGenerator:
         rate: float = 0.2,
         num_generators: int = 30,
         min_events: int = 2,
-        max_events: int = 20,
+        max_events: int = 5,
         max_threads: int = 4
     ):
         self.current_time = datetime(2020, 5, 1)
@@ -52,6 +54,12 @@ class DataGenerator:
         """Generate a single event as raw JSON"""
         current_time = datetime.utcnow()
         product = random.choice(products)
+        if not isinstance(product.get("brand"), str):
+            product["brand"] = None  # Correctly set the value to None
+
+        if product.get("category_code") == "nan":
+            product["category_code"] = None  # Set to None if the category_code is "nan"
+
         event = {
             "event_time": current_time.strftime('%Y-%m-%d %H:%M:%S UTC'),
             "event_type": self.generate_event_type(),
@@ -59,50 +67,21 @@ class DataGenerator:
             "user_id": user_id,
             "user_session": user_session,
         }
+
         return json.dumps(event)  # Convert dictionary to JSON string
 
-    def data_generator_worker(
-        self,
-        user_id: str,
-        user_session: str,
-        products: list,
-        total_events: int
-    ):
-        """Worker thread to generate and send data to Kafka"""
-        events_generated = 0
 
-        while events_generated < total_events:
-            event = self.generate_events(user_id, user_session, products)
-            # Send event to Kafka topic
-            self.producer.send(self.kafka_topic, value=event)
-            print(f"Sent: {event}")
-            events_generated += 1
-            time.sleep(1.0 / self.rate)
-
-    def run(self, products: list):
-        """Run the data generation process using a thread pool"""
-        # Prepare the work items
-        work_items = []
-        for i in range(self.num_generators):
-            user_id = uuid.uuid4().int % 1_000_000_000
-            user_session = str(uuid.uuid4())
+    def run(self, products):
+        while True:
+            # Gửi khoảng 15 sự kiện trong mỗi batch
             total_events = random.randint(self.min_events, self.max_events)
-            print(f"Generator {i + 1} will generate {total_events} events for user {user_id}")
-            work_items.append((user_id, user_session, products, total_events))
-
-        # Use ThreadPoolExecutor to manage the thread pool
-        with ThreadPoolExecutor(max_workers=self.max_threads) as executor:
-            # Submit all work items to the thread pool
-            futures = [
-                executor.submit(self.data_generator_worker, *work_item)
-                for work_item in work_items
-            ]
-
-            # Wait for all tasks to complete and get their results
-            for future in futures:
-                print(future.result())
-
-        self.producer.close()
+            user_id = str(uuid.uuid4().int % 1_000_000_000)
+            user_session = str(uuid.uuid4())
+            for _ in range(total_events):
+                event = self.generate_events(user_id, user_session, products)
+                self.producer.send(self.kafka_topic, value=event)
+                print(f"Sent: {event}")
+                time.sleep(random.randrange(1,10)/10.0)
 
 def main():
 
